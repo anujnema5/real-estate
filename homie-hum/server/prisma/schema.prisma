@@ -1,0 +1,203 @@
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["omitApi"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PropertyType {
+  apartment
+  house
+  condo
+  pg
+  single
+  library
+  mess
+}
+
+enum roles {
+  admin
+  employee
+}
+
+enum BookingStatus {
+  confirmed
+  pending
+  cancelled
+  left
+}
+
+enum SubscriptionPlan {
+  starter
+  pro
+  business
+}
+
+enum SubscriptionStatus {
+  active
+  inactive
+}
+
+model User {
+  id            String        @id @default(cuid())
+  firstName     String?
+  lastName      String?
+  username      String?       @unique
+  email         String?       @unique
+  dateOfBirth   DateTime?     
+  emailVerified Boolean?      @default(false)
+  password      String?
+  googleId      String?
+  provider      String?
+  left          Boolean?      @default(false)
+  phoneNumber   String?       @unique
+  refreshToken  String?       @db.Text
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  blocked       Boolean       @default(false)
+  otp           String?
+  account       Account?
+  vendor        Vendor?
+  booking       Booking[]
+  subscription  Subscription?
+  property      Property[]
+  leads         Interaction[]
+  Like          Like[]
+}
+
+model Account {
+  id     String  @id @default(cuid())
+  userId String  @unique
+  avatar String?
+  bio    String? @db.Text
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Vendor {
+  id          String        @id @default(cuid())
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  userId      String        @unique
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property    Property[]
+  booking     Booking[]
+  interaction Interaction[]
+}
+
+model Property {
+  id          String           @id @default(cuid())
+  title       String
+  description String
+  type        PropertyType
+  address     String
+  building    String?
+  houseNumber String?
+  city        String
+  state       String
+  zipcode     String
+  price       Float
+  bedrooms    Int
+  bathrooms   Int
+  areaSize    Float
+  available   Boolean
+  latitude    Float?
+  longitude   Float?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  vendorId    String
+  vendor      Vendor           @relation(fields: [vendorId], references: [id])
+  userId      String
+  user        User             @relation(fields: [userId], references: [id])
+  booking     Booking[]
+  images      PropertyImages[]
+  like        Like[]
+}
+
+model PropertyImages {
+  id         String   @id @default(cuid())
+  url        String
+  alt        String?
+  uploadedAt DateTime @default(now())
+  propertyId String   @unique
+  property   Property @relation(fields: [propertyId], references: [id])
+}
+
+model Admin {
+  id           String  @id @default(cuid())
+  username     String  @unique
+  email        String  @unique
+  password     String
+  refreshToken String? @db.Text
+}
+
+model Booking {
+  id               String         @id @default(cuid())
+  userId           String
+  propertyId       String
+  vendorId         String
+  checkInDate      DateTime
+  checkOutDate     DateTime?
+  totalPrice       Float
+  paid             Boolean?
+  status           BookingStatus? @default(pending)
+  approved         Boolean?       @default(false)
+  rejectedByUser   Boolean?       @default(false)
+  rejectedByVendor Boolean?       @default(false)
+  createdAt        DateTime       @default(now())
+  leftDate         DateTime?
+  updatedAt        DateTime?      @updatedAt
+  user             User           @relation(fields: [userId], references: [id])
+  property         Property       @relation(fields: [propertyId], references: [id])
+  vendor           Vendor         @relation(fields: [vendorId], references: [id])
+  review           Review[]
+}
+
+model Review {
+  id        String  @id @default(cuid())
+  content   String?
+  bookingId String
+  star      Int
+  booking   Booking @relation(fields: [bookingId], references: [id])
+}
+
+model Package {
+  id           String           @id @default(cuid())
+  plan         SubscriptionPlan
+  price        Int
+  subscription Subscription[]
+}
+
+model Subscription {
+  id        String             @id @default(cuid())
+  userId    String             @unique
+  user      User               @relation(fields: [userId], references: [id])
+  duration  Int
+  status    SubscriptionStatus @default(inactive)
+  packageId String
+  package   Package            @relation(fields: [packageId], references: [id])
+  createdAt DateTime           @default(now())
+  isExpired Boolean            @default(false)
+  updatedAt DateTime           @updatedAt
+}
+
+model Interaction {
+  id        String   @id @default(cuid())
+  vendorId  String
+  vendor    Vendor   @relation(fields: [vendorId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Like {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  Property   Property? @relation(fields: [propertyId], references: [id])
+  propertyId String?
+}
